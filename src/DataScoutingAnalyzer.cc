@@ -202,10 +202,10 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
 
     if(pileupCorr > 0. || pileupCorr < 1.)
     {    
-      std::cout<< dsJet.pt()<< "\t";
+      //std::cout<< dsJet.pt()<< "\t";
       dsJet.scaleEnergy(pileupCorr);
       dsJet.scaleEnergy(corrector->correction(dsJet,iEvent,iSetup));
-      std::cout<<dsJet.pt()<<std::endl;
+      //std::cout<<dsJet.pt()<<std::endl;
 
       dsJetPt[nDSJets]      = dsJet.pt();
       dsJetEta[nDSJets]     = dsJet.eta();
