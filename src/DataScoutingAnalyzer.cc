@@ -27,7 +27,7 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 
-#include "amott/DataScoutingAnalyzer/interface/DataScoutingAnalyzer.h"
+#include "DataScoutingAnalyzer/interface/DataScoutingAnalyzer.h"
 
 //objects
 //#include "DataFormats/JetReco/interface/JetCollection.h"
