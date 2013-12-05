@@ -11,7 +11,7 @@ process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
 process.GlobalTag.globaltag = 'GR_P_V41_AN1::All'
 
 process.load('JetMETCorrections.Configuration.DefaultJEC_cff')
-
+process.MessageLogger.cerr.FwkReport.reportEvery = 10
 process.options = cms.untracked.PSet(
     SkipEvent = cms.untracked.vstring('ProductNotFound'),
     )
@@ -72,11 +72,15 @@ process.source = cms.Source("PoolSource",
 )
 )
 
-process.demo = cms.EDAnalyzer('CaloScoutingAnalyzer',
-                              #jets = cms.InputTag("ak5PFL1FastL2L3"),
-                              jets = cms.InputTag("ak5CaloJets"),
-                              jetCorrections = cms.string("ak5CaloL2L3"),
-                              rho  = cms.InputTag("kt6CaloJets","rho"),
+plugin_type       = [["CaloScoutingAnalyzer","ak5CaloJets","ak5CaloL1L2L3","kt6CaloJets"],["PFJetScoutingAnalyzer","ak5PFJets","ak5PFL1L2L3","kt6PFJets"]]
+i = 1 # 0 is CaloScoutingAnalyzer 1 is PFJetScoutingAnalyzer
+
+print plugin_type[i][0]+" is running."+"\njets:"+plugin_type[i][1]+"\njetCorrections:"+plugin_type[i][2]+"\nrho:"+plugin_type[i][3]
+
+process.demo = cms.EDAnalyzer(plugin_type[i][0],
+                              jets = cms.InputTag(plugin_type[i][1]),
+                              jetCorrections = cms.string(plugin_type[i][2]),
+                              rho  = cms.InputTag(plugin_type[i][3],"rho"),
                               jetThreshold = cms.double(20),
                               met = cms.InputTag("met"),
                               electrons = cms.InputTag(""),
