@@ -69,7 +69,10 @@
 template <typename jettype, typename mettype>
 DataScoutingAnalyzer<jettype,mettype>::DataScoutingAnalyzer(const edm::ParameterSet& iConfig):
   tag_recoJet(iConfig.getParameter<edm::InputTag>("jets")),
-  s_recoJetCorrector(iConfig.getParameter<std::string>("jetCorrections")),
+  apply_corrections_reco(iConfig.getParameter<bool>("apply_corrections_reco")),
+  apply_corrections_DS(iConfig.getParameter<bool>("apply_corrections_DS")),
+  s_recoJetCorrector(iConfig.getParameter<std::string>("jetCorrectionsReco")),
+  s_dsJetCorrector(iConfig.getParameter<std::string>("jetCorrectionsDS")),
   tag_recoRho(iConfig.getParameter<edm::InputTag>("rho")),  
   jetThreshold(iConfig.getParameter<double>("jetThreshold")),
   tag_recoMet(iConfig.getParameter<edm::InputTag>("met")),
@@ -110,7 +113,8 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   lumiBlock  = iEvent.id().luminosityBlock();
 
   Handle<std::vector<jettype> > h_recoJet;
-  const JetCorrector* corrector = JetCorrector::getJetCorrector (s_recoJetCorrector, iSetup);  
+  const JetCorrector* correctorL1FastL2L3 = JetCorrector::getJetCorrector (s_recoJetCorrector, iSetup);
+  const JetCorrector* correctorL2L3     = JetCorrector::getJetCorrector (s_dsJetCorrector, iSetup); 
   //Handle<std::vector<reco::Jet> > h_recoJet;
   //Handle<std::vector<reco::MET> > h_recoMet;
   Handle<std::vector<mettype> > h_recoMet;
@@ -161,7 +165,20 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   iEvent.getByLabel("hltActivityPhotonHcalIso",hcalIsoMap);
   iEvent.getByLabel("hltActivityPhotonHcalForHE",hforHEMap);
   */
+  edm::Handle< bool > HBHENoiseFilterResult;
+  try { iEvent.getByLabel(edm::InputTag("HBHENoiseFilterResultProducer","HBHENoiseFilterResult"), HBHENoiseFilterResult); }
+  catch ( cms::Exception& ex ) { edm::LogWarning("CmsMetFiller") << "Can't get bool: " << HBHENoiseFilterResult; }
+  HBHENoiseFilterResultFlag = *HBHENoiseFilterResult;
 
+  edm::Handle< bool > eeBadScFilter;
+  try { iEvent.getByLabel("eeBadScFilter", eeBadScFilter); }
+  catch ( cms::Exception& ex ) { edm::LogWarning("CmsMetFiller") << "Can't get bool: " << eeBadScFilter; }
+  eeBadScFilterFlag = *eeBadScFilter;
+
+  edm::Handle< bool > hcalLaserEventFilter;
+  try { iEvent.getByLabel("hcalLaserEventFilter", hcalLaserEventFilter); }
+  catch ( cms::Exception& ex ) { edm::LogWarning("CmsMetFiller") << "Can't get bool: " << hcalLaserEventFilter; }
+  hcalLaserEventFilterFlag = *hcalLaserEventFilter;
   
   //fill the tree
   
@@ -179,10 +196,16 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   typename std::vector<jettype>::const_iterator i_recoJet;
   //std::vector<reco::Jet>::const_iterator i_recoJet;
   nRECOJets=0;
-  for(i_recoJet = h_recoJet->begin(); i_recoJet != h_recoJet->end(); i_recoJet++){
-    double scale = corrector->correction(*i_recoJet,iEvent,iSetup);
-    ((reco::Jet)*i_recoJet).scaleEnergy(scale);
-    if(i_recoJet->pt() < jetThreshold - 10) continue;
+  for(i_recoJet = h_recoJet->begin(); i_recoJet != h_recoJet->end(); i_recoJet++)
+  {  
+    double scale = correctorL1FastL2L3->correction(*i_recoJet,iEvent,iSetup);
+    if(apply_corrections_reco)
+    {
+      ((reco::Jet)*i_recoJet).scaleEnergy(scale);
+    }
+
+    if(i_recoJet->pt() < jetThreshold) continue;
+
     recoJetPt[nRECOJets] = i_recoJet->pt();
     recoJetEta[nRECOJets] = i_recoJet->eta();
     recoJetPhi[nRECOJets] = i_recoJet->phi();
@@ -196,38 +219,62 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   {
     reco::CaloJet dsJet = *i_dsJet;
     //apply pileup correction
-    float pileupCorr = pileupCorr= 1-((dsRho-1.08)*dsJet.jetArea())/dsJet.pt();
+    float pileupCorr = 1-(dsRho*dsJet.jetArea()/dsJet.pt());
 
     if(dsJet.pt()*pileupCorr < jetThreshold) continue;
 
-    if(pileupCorr > 0. || pileupCorr < 1.)
-    {    
-      //std::cout<< dsJet.pt()<< "\t";
-      dsJet.scaleEnergy(pileupCorr);
-      dsJet.scaleEnergy(corrector->correction(dsJet,iEvent,iSetup));
-      //std::cout<<dsJet.pt()<<std::endl;
+     if(apply_corrections_DS){ 
+      if(pileupCorr > 0. && pileupCorr < 1.)
+      {    
+        //std::cout<< dsJet.pt()<< "\t";
+        dsJet.scaleEnergy(pileupCorr);
+        dsJet.scaleEnergy(correctorL2L3->correction(dsJet,iEvent,iSetup));
+        //std::cout<<dsJet.pt()<<std::endl;
 
-      dsJetPt[nDSJets]      = dsJet.pt();
-      dsJetEta[nDSJets]     = dsJet.eta();
-      dsJetPhi[nDSJets]     = dsJet.phi();
-      dsJetE[nDSJets]       = dsJet.energy()*cosh(dsJet.eta());
-      dsJetFracHad[nDSJets] = dsJet.energyFractionHadronic();
-    }
+        dsJetPt[nDSJets]      = dsJet.pt();
+        dsJetEta[nDSJets]     = dsJet.eta();
+        dsJetPhi[nDSJets]     = dsJet.phi();
+        dsJetE[nDSJets]       = dsJet.energy()*cosh(dsJet.eta());
+        dsJetFracHad[nDSJets] = dsJet.energyFractionHadronic();
+        dsJetFracEm[nDSJets]  = dsJet.emEnergyFraction();
+       }
+       else continue;
+     }
+     else 
+     {
+        dsJetPt[nDSJets]      = dsJet.pt();
+        dsJetEta[nDSJets]     = dsJet.eta();
+        dsJetPhi[nDSJets]     = dsJet.phi();
+        dsJetE[nDSJets]       = dsJet.energy()*cosh(dsJet.eta());
+        dsJetFracHad[nDSJets] = dsJet.energyFractionHadronic();
+        dsJetFracEm[nDSJets]  = dsJet.emEnergyFraction();
+      }
     //do jet matching
     float bestdEoE = 9999;
     int bestIndex=-1;
+    float minDeltaR=-1;
+    float dR;
     for( int iRECOJet=0; iRECOJet < nRECOJets; iRECOJet++)
     {
+      dR= reco::deltaR(dsJet.eta(),dsJet.phi(),recoJetEta[iRECOJet],recoJetPhi[iRECOJet]);
       //std::cout << "DeltaR: " << reco::deltaR(i_dsJet->eta(),i_dsJet->phi(),recoJetEta[iRECOJet],recoJetPhi[iRECOJet]) << std::endl;
-      if( reco::deltaR(dsJet.eta(),dsJet.phi(),recoJetEta[iRECOJet],recoJetPhi[iRECOJet])> 0.5) continue; //require DR match
+      if( dR> 0.1) continue; //require DR match
       
-      float dEoE = fabs(dsJet.energy() - recoJetE[iRECOJet])/recoJetE[iRECOJet];
-      //std::cout << "dEoE: " << dEoE << std::endl;
-      if(dEoE < 0.5 && dEoE < bestdEoE){
-        bestdEoE = dEoE;
+      if (dR < minDeltaR || minDeltaR < 0) 
+      {
+        minDeltaR = dR;
         bestIndex = iRECOJet;
       }
+
+      float dEoE = fabs(dsJet.energy() - recoJetE[iRECOJet])/recoJetE[iRECOJet];
+      //std::cout << "dEoE: " << dEoE << std::endl;
+      if(dEoE < 0.5 && dEoE < bestdEoE)
+      {
+        //bestdEoE = dEoE;
+        //bestIndex = iRECOJet;
+      }
     }
+
     dsJetMatchIndex[nDSJets] = bestIndex;
     nDSJets++;
   }
@@ -254,6 +301,7 @@ DataScoutingAnalyzer<jettype,mettype>::beginJob()
   outputTree->Branch("dsJetPhi",dsJetPhi,"dsJetPhi[nDSJets]");
   outputTree->Branch("dsJetE",dsJetE,"dsJetE[nDSJets]");
   outputTree->Branch("dsJetFracHad",dsJetFracHad,"dsJetFracHad[nDSJets]");
+  outputTree->Branch("dsJetFracEm",dsJetFracEm,"dsJetFracEm[nDSJets]");
   outputTree->Branch("dsJetMatchIndex",dsJetMatchIndex,"dsJetMatchIndex[nDSJets]/I");
 
   outputTree->Branch("dsRho",&dsRho);
@@ -274,6 +322,10 @@ DataScoutingAnalyzer<jettype,mettype>::beginJob()
   outputTree->Branch("recoMetPhi",&recoMetPhi);
   outputTree->Branch("recoMetCleanPt",&recoMetCleanPt);
   outputTree->Branch("recoMetCleanPhi",&recoMetCleanPhi);
+
+  outputTree->Branch("HBHENoiseFilterResultFlag",&HBHENoiseFilterResultFlag,"HBHENoiseFilterResultFlag/B");
+  outputTree->Branch("eeBadScFilterFlag",&eeBadScFilterFlag,"eeBadScFilterFlag/B"); 
+  outputTree->Branch("hcalLaserEventFilterFlag",&hcalLaserEventFilterFlag,"hcalLaserEventFilterFlag/B"); 
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
@@ -333,4 +385,3 @@ typedef DataScoutingAnalyzer<reco::PFJet,reco::PFMET> PFScoutingAnalyzer;
 DEFINE_FWK_MODULE(CaloScoutingAnalyzer);
 DEFINE_FWK_MODULE(PFJetScoutingAnalyzer);
 DEFINE_FWK_MODULE(PFScoutingAnalyzer);
-
