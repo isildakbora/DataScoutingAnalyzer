@@ -226,15 +226,16 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
      if(apply_corrections_DS){ 
       if(pileupCorr > 0. && pileupCorr < 1.)
       {    
-        //std::cout<< dsJet.pt()<< "\t";
+        std::cout<< dsJet.pt()<< "\t" << pileupCorr << "\t";
         dsJet.scaleEnergy(pileupCorr);
+        std::cout<<dsJet.pt()<< "\t";
         dsJet.scaleEnergy(correctorL2L3->correction(dsJet,iEvent,iSetup));
-        //std::cout<<dsJet.pt()<<std::endl;
+        std::cout<<dsJet.pt()<<std::endl;
 
         dsJetPt[nDSJets]      = dsJet.pt();
         dsJetEta[nDSJets]     = dsJet.eta();
         dsJetPhi[nDSJets]     = dsJet.phi();
-        dsJetE[nDSJets]       = dsJet.energy()*cosh(dsJet.eta());
+        dsJetE[nDSJets]       = dsJet.energy();
         dsJetFracHad[nDSJets] = dsJet.energyFractionHadronic();
         dsJetFracEm[nDSJets]  = dsJet.emEnergyFraction();
        }
@@ -245,7 +246,7 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
         dsJetPt[nDSJets]      = dsJet.pt();
         dsJetEta[nDSJets]     = dsJet.eta();
         dsJetPhi[nDSJets]     = dsJet.phi();
-        dsJetE[nDSJets]       = dsJet.energy()*cosh(dsJet.eta());
+        dsJetE[nDSJets]       = dsJet.energy();
         dsJetFracHad[nDSJets] = dsJet.energyFractionHadronic();
         dsJetFracEm[nDSJets]  = dsJet.emEnergyFraction();
       }
