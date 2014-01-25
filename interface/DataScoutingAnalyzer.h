@@ -60,6 +60,7 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   float dsJetPhi[_kMaxJets];
   float dsJetE[_kMaxJets];
   float dsJetFracHad[_kMaxJets];
+  float dsJetFracEm[_kMaxJets];
   float 
   [_kMaxJets];
   int dsJetMatchIndex[_kMaxJets];
