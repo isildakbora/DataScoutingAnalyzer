@@ -113,7 +113,7 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   lumiBlock  = iEvent.id().luminosityBlock();
 
   Handle<std::vector<jettype> > h_recoJet;
-  const JetCorrector* correctorL1FastL2L3 = JetCorrector::getJetCorrector (s_recoJetCorrector, iSetup);
+  const JetCorrector* correctorL1L2L3 = JetCorrector::getJetCorrector (s_recoJetCorrector, iSetup);
   const JetCorrector* correctorL2L3     = JetCorrector::getJetCorrector (s_dsJetCorrector, iSetup); 
   //Handle<std::vector<reco::Jet> > h_recoJet;
   //Handle<std::vector<reco::MET> > h_recoMet;
@@ -198,7 +198,7 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   nRECOJets=0;
   for(i_recoJet = h_recoJet->begin(); i_recoJet != h_recoJet->end(); i_recoJet++)
   {  
-    double scale = correctorL1FastL2L3->correction(*i_recoJet,iEvent,iSetup);
+    double scale = correctorL1L2L3->correction(*i_recoJet,iEvent,iSetup);
     if(apply_corrections_reco)
     {
       ((reco::Jet)*i_recoJet).scaleEnergy(scale);
