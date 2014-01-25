@@ -34,7 +34,10 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
       // ----------member data ---------------------------
   
   edm::InputTag tag_recoJet;
+  bool apply_corrections_reco;
+  bool apply_corrections_DS;
   std::string s_recoJetCorrector;
+  std::string s_dsJetCorrector;
   edm::InputTag tag_recoRho;
   double jetThreshold;
   edm::InputTag tag_recoMet;
@@ -42,7 +45,6 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   edm::InputTag tag_recoMuons;
   edm::InputTag tag_hcalNoise;
   std::string s_outputFile;
- 
 
   TFile *outputFile;
   TTree *outputTree;
@@ -58,6 +60,8 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   float dsJetPhi[_kMaxJets];
   float dsJetE[_kMaxJets];
   float dsJetFracHad[_kMaxJets];
+  float 
+  [_kMaxJets];
   int dsJetMatchIndex[_kMaxJets];
 
 
@@ -73,6 +77,8 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   float recoJetEta[_kMaxJets];
   float recoJetPhi[_kMaxJets];
   float recoJetE[_kMaxJets];
+
+  
   //  float recoJetFracHad[_kMaxJets];
 
   float recoRho;
@@ -81,6 +87,9 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   float recoMetPhi;
   float recoMetCleanPt;
   float recoMetCleanPhi;
+  bool  HBHENoiseFilterResultFlag;
+  bool  eeBadScFilterFlag;
+  bool  hcalLaserEventFilterFlag;
   
 
 };
