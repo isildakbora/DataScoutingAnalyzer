@@ -9,7 +9,7 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 
-#include "amott/DataScoutingAnalyzer/interface/DataScoutingAnalyzer.h"
+#include "isildak/DataScoutingAnalyzer/interface/DataScoutingAnalyzer.h"
 
 //objects
 #include "DataFormats/JetReco/interface/CaloJetCollection.h"
@@ -70,7 +70,9 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   lumiBlock  = iEvent.id().luminosityBlock();
 
   Handle<std::vector<jettype> > h_recoJet;
+  Handle<std::vector<mettype> > h_recoMet;
   const JetCorrector* correctorL1L2L3 = JetCorrector::getJetCorrector (s_recoJetCorrector, iSetup);
+
   const JetCorrector* correctorL2L3     = JetCorrector::getJetCorrector (s_dsJetCorrector, iSetup); 
  
   Handle<double> h_recoRho;
