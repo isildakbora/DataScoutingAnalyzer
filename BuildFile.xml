@@ -11,9 +11,5 @@
 <use name="JetMETCorrections/Objects"/>
 <flags EDM_PLUGIN="1"/>
 <export>
-<<<<<<< HEAD
    <lib name="isildak/DataScoutingAnalyzer"/>
-=======
-   <lib name="DataScoutingAnalyzer"/>
->>>>>>> 86928e8139547a9aab6ca840e799e4966ca8d485
 </export>
