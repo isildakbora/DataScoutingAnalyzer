@@ -55,17 +55,22 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   int evtNo;
   int lumiBlock;
   int nDSJets;
+  
+  float recoJEC[_kMaxJets];
+  float dsJECL2L3Res[_kMaxJets];
+  float dspileupCorr[_kMaxJets];
+
   float dsJetPt[_kMaxJets];
   float dsJetEta[_kMaxJets];
   float dsJetPhi[_kMaxJets];
   float dsJetE[_kMaxJets];
+  float dsJetRawE[_kMaxJets];
   float dsJetFracHad[_kMaxJets];
   float dsJetFracEm[_kMaxJets];
-  int dsJetMatchIndex[_kMaxJets];
+  int   dsJetMatchIndex[_kMaxJets];
 
 
   float dsRho;
-
   float dsMetPt;
   float dsMetPhi;
   float dsMetCleanPt;
@@ -76,12 +81,13 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   float recoJetEta[_kMaxJets];
   float recoJetPhi[_kMaxJets];
   float recoJetE[_kMaxJets];
+  float recoJetRawE[_kMaxJets];
+  float recoJetFracHad[_kMaxJets];
+  float recoJetFracEm[_kMaxJets];
 
-  
   //  float recoJetFracHad[_kMaxJets];
 
   float recoRho;
-
   float recoMetPt;
   float recoMetPhi;
   float recoMetCleanPt;
@@ -89,8 +95,6 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   bool  HBHENoiseFilterResultFlag;
   bool  eeBadScFilterFlag;
   bool  hcalLaserEventFilterFlag;
-  
-
 };
 
 

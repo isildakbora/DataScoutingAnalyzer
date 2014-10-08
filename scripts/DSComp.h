@@ -1,10 +1,3 @@
-//////////////////////////////////////////////////////////
-// This class has been automatically generated on
-// Tue Dec  3 14:08:53 2013 by ROOT version 5.34/00
-// from TTree DSComp/
-// found on file: test.root
-//////////////////////////////////////////////////////////
-
 #ifndef DSComp_h
 #define DSComp_h
 
@@ -12,9 +5,6 @@
 #include <TChain.h>
 #include <TFile.h>
 
-// Header file for the classes stored in the TTree if any.
-
-// Fixed size dimensions of array or collections stored in the TTree if any.
 
 class DSComp {
 public :
