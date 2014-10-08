@@ -9,7 +9,11 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 
+<<<<<<< HEAD
 #include "isildak/DataScoutingAnalyzer/interface/DataScoutingAnalyzer.h"
+=======
+#include "DataScoutingAnalyzer/interface/DataScoutingAnalyzer.h"
+>>>>>>> 86928e8139547a9aab6ca840e799e4966ca8d485
 
 //objects
 #include "DataFormats/JetReco/interface/CaloJetCollection.h"
