@@ -32,7 +32,7 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
       virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&);
 
       // ----------member data ---------------------------
-  
+
   edm::InputTag tag_recoJet;
   bool apply_corrections_reco;
   bool apply_corrections_DS;
@@ -55,12 +55,13 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   int evtNo;
   int lumiBlock;
   int nDSJets;
-  
+
   float recoJEC[_kMaxJets];
   float dsJECL2L3Res[_kMaxJets];
   float dspileupCorr[_kMaxJets];
 
   float dsJetPt[_kMaxJets];
+  float dsJetRawPt[_kMaxJets];
   float dsJetEta[_kMaxJets];
   float dsJetPhi[_kMaxJets];
   float dsJetE[_kMaxJets];
@@ -75,9 +76,10 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
   float dsMetPhi;
   float dsMetCleanPt;
   float dsMetCleanPhi;
-  
+
   int nRECOJets;
   float recoJetPt[_kMaxJets];
+  float recoJetRawPt[_kMaxJets];
   float recoJetEta[_kMaxJets];
   float recoJetPhi[_kMaxJets];
   float recoJetE[_kMaxJets];
@@ -99,4 +101,3 @@ class DataScoutingAnalyzer : public edm::EDAnalyzer {
 
 
 #endif
-

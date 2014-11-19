@@ -39,18 +39,18 @@
 
 template <typename jettype, typename mettype>
 DataScoutingAnalyzer<jettype,mettype>::DataScoutingAnalyzer(const edm::ParameterSet& iConfig):
-  tag_recoJet(iConfig.getParameter<edm::InputTag>("jets")),
-  apply_corrections_reco(iConfig.getParameter<bool>("apply_corrections_reco")),
-  apply_corrections_DS(iConfig.getParameter<bool>("apply_corrections_DS")),
-  s_recoJetCorrector(iConfig.getParameter<std::string>("jetCorrectionsReco")),
-  s_dsJetCorrector(iConfig.getParameter<std::string>("jetCorrectionsDS")),
-  tag_recoRho(iConfig.getParameter<edm::InputTag>("rho")),  
-  jetThreshold(iConfig.getParameter<double>("jetThreshold")),
-  tag_recoMet(iConfig.getParameter<edm::InputTag>("met")),
-  tag_recoElectrons(iConfig.getParameter<edm::InputTag>("electrons")),
-  tag_recoMuons(iConfig.getParameter<edm::InputTag>("muons")),
-  tag_hcalNoise(iConfig.getParameter<edm::InputTag>("noise")),
-  s_outputFile(iConfig.getParameter<std::string>("outputFile")){
+tag_recoJet(iConfig.getParameter<edm::InputTag>("jets")),
+apply_corrections_reco(iConfig.getParameter<bool>("apply_corrections_reco")),
+apply_corrections_DS(iConfig.getParameter<bool>("apply_corrections_DS")),
+s_recoJetCorrector(iConfig.getParameter<std::string>("jetCorrectionsReco")),
+s_dsJetCorrector(iConfig.getParameter<std::string>("jetCorrectionsDS")),
+tag_recoRho(iConfig.getParameter<edm::InputTag>("rho")),
+jetThreshold(iConfig.getParameter<double>("jetThreshold")),
+tag_recoMet(iConfig.getParameter<edm::InputTag>("met")),
+tag_recoElectrons(iConfig.getParameter<edm::InputTag>("electrons")),
+tag_recoMuons(iConfig.getParameter<edm::InputTag>("muons")),
+tag_hcalNoise(iConfig.getParameter<edm::InputTag>("noise")),
+s_outputFile(iConfig.getParameter<std::string>("outputFile")){
 
 }
 
@@ -62,7 +62,7 @@ DataScoutingAnalyzer<jettype,mettype>::~DataScoutingAnalyzer(){
 template <typename jettype, typename mettype>
 void
 DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup){
-  
+
   using namespace edm;
 
   runNo      = iEvent.id().run();
@@ -73,8 +73,8 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   Handle<std::vector<mettype> > h_recoMet;
   const JetCorrector* correctorL1L2L3 = JetCorrector::getJetCorrector (s_recoJetCorrector, iSetup);
 
-  const JetCorrector* correctorL2L3     = JetCorrector::getJetCorrector (s_dsJetCorrector, iSetup); 
- 
+  const JetCorrector* correctorL2L3     = JetCorrector::getJetCorrector (s_dsJetCorrector, iSetup);
+
   Handle<double> h_recoRho;
   edm::Handle<reco::JetIDValueMap> recoJetIDMap;
 
@@ -86,12 +86,12 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   Handle<std::vector<reco::CaloMET> > h_dsMet;
   Handle<std::vector<reco::CaloMET> > h_dsMetClean;
   Handle<double> h_dsRho;
- 
+
   iEvent.getByLabel("hltCaloJetIDPassed",h_dsJet);
   iEvent.getByLabel("hltMet",h_dsMet);
   iEvent.getByLabel("hltMetClean",h_dsMetClean);
   iEvent.getByLabel("hltKT6CaloJets","rho",h_dsRho);
-  
+
   edm::Handle< bool > HBHENoiseFilterResult;
   try { iEvent.getByLabel(edm::InputTag("HBHENoiseFilterResultProducer","HBHENoiseFilterResult"), HBHENoiseFilterResult); }
   catch ( cms::Exception& ex ) { edm::LogWarning("CmsMetFiller") << "Can't get bool: " << HBHENoiseFilterResult; }
@@ -101,9 +101,9 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   try { iEvent.getByLabel("hcalLaserEventFilter", hcalLaserEventFilter); }
   catch ( cms::Exception& ex ) { edm::LogWarning("CmsMetFiller") << "Can't get bool: " << hcalLaserEventFilter; }
   hcalLaserEventFilterFlag = *hcalLaserEventFilter;
-  
+
   //fill the tree
-  
+
   //MET
   dsMetPt = h_dsMet->front().pt();
   dsMetPhi = h_dsMet->front().phi();
@@ -111,7 +111,7 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   dsMetCleanPhi = h_dsMetClean->front().phi();
   recoMetPt = h_recoMet->front().pt();
   recoMetPhi = h_recoMet->front().phi();
-  
+
   dsRho = *h_dsRho;
   recoRho = *h_recoRho;
 
@@ -119,193 +119,198 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
   //std::vector<reco::Jet>::const_iterator i_recoJet;
   nRECOJets=0;
   for(i_recoJet = h_recoJet->begin(); i_recoJet != h_recoJet->end(); i_recoJet++)
-  {  
-    jettype recoJet = *i_recoJet;
-
-    reco::CaloJet* p1 = dynamic_cast<reco::CaloJet*>(&recoJet);
-    //reco::PFJet*   p2 = dynamic_cast<reco::PFJet*>(&recoJet);
-
-    recoJetRawE[nRECOJets] = recoJet.energy();
-    float tmp_pT = recoJet.pt();
-    double scale = correctorL1L2L3->correction(recoJet,iEvent,iSetup);
-    if(apply_corrections_reco)
     {
-      recoJet.scaleEnergy(scale);
-      recoJEC[nRECOJets] = recoJet.pt()/tmp_pT;
-    }
+      jettype recoJet = *i_recoJet;
 
-    if(recoJet.pt() < jetThreshold) continue;
-    
-    recoJetPt[nRECOJets]    = recoJet.pt();
-    recoJetEta[nRECOJets]   = recoJet.eta();
-    recoJetPhi[nRECOJets]   = recoJet.phi();
-    recoJetE[nRECOJets]     = recoJet.energy();
+      reco::CaloJet* p1 = dynamic_cast<reco::CaloJet*>(&recoJet);
+      //reco::PFJet*   p2 = dynamic_cast<reco::PFJet*>(&recoJet);
 
-    if(p1)
-    {
-      recoJetFracHad[nRECOJets] = p1->energyFractionHadronic();
-      recoJetFracEm[nRECOJets]  = p1->emEnergyFraction();
-    }
-    nRECOJets++;
-  }
+      recoJetRawE[nRECOJets]  = recoJet.energy();
+      recoJetRawPt[nRECOJets] = recoJet.pt();
 
-  std::vector<reco::CaloJet>::const_iterator i_dsJet;
-  nDSJets=0;
-  for(i_dsJet = h_dsJet->begin(); i_dsJet != h_dsJet->end(); i_dsJet++){
-    reco::CaloJet dsJet = *i_dsJet;
-    dsJetRawE[nDSJets]  = dsJet.energy();
-    //apply pileup correction
-    float pileupCorr      = 1-((1.08 - dsRho)*dsJet.jetArea()/dsJet.pt());
+      float tmp_pT = recoJet.pt();
+      double scale = correctorL1L2L3->correction(recoJet,iEvent,iSetup);
+      if(apply_corrections_reco)
+        {
+          recoJet.scaleEnergy(scale);
+          recoJEC[nRECOJets] = recoJet.pt()/tmp_pT;
+        }
 
-    if(dsJet.pt()*pileupCorr < jetThreshold) continue;
+        if(recoJet.pt() < jetThreshold) continue;
 
-    if(apply_corrections_DS){
+        recoJetPt[nRECOJets]    = recoJet.pt();
+        recoJetEta[nRECOJets]   = recoJet.eta();
+        recoJetPhi[nRECOJets]   = recoJet.phi();
+        recoJetE[nRECOJets]     = recoJet.energy();
 
-      if(pileupCorr > 0. && pileupCorr < 1.){
-        dspileupCorr[nDSJets] = pileupCorr;
-        dsJet.scaleEnergy(pileupCorr);
-        float ds_tmp_pT = dsJet.pt();
-        dsJet.scaleEnergy(correctorL2L3->correction(dsJet,iEvent,iSetup));
-        dsJECL2L3Res[nDSJets] = dsJet.pt()/ds_tmp_pT;
-      }
-    }
-    dsJetPt[nDSJets]      = dsJet.pt();
-    dsJetEta[nDSJets]     = dsJet.eta();
-    dsJetPhi[nDSJets]     = dsJet.phi();
-    dsJetE[nDSJets]       = dsJet.energy();
-    dsJetFracHad[nDSJets] = dsJet.energyFractionHadronic();
-    dsJetFracEm[nDSJets]  = dsJet.emEnergyFraction();
+        if(p1)
+          {
+            recoJetFracHad[nRECOJets] = p1->energyFractionHadronic();
+            recoJetFracEm[nRECOJets]  = p1->emEnergyFraction();
+          }
+          nRECOJets++;
+        }
 
-    //do jet matching
-    float bestdEoE  = 9999;
-    int bestIndex   = -1;
-    float minDeltaR = 9999.;
-    float dR;
-    for( int iRECOJet=0; iRECOJet < nRECOJets; iRECOJet++){
-      dR= reco::deltaR(dsJet.eta(),dsJet.phi(),recoJetEta[iRECOJet],recoJetPhi[iRECOJet]);
-      if( dR> 0.5) continue; //require DR match
-      if (dR < minDeltaR){
-        minDeltaR = dR;
-        bestIndex = iRECOJet;
-      }
+        std::vector<reco::CaloJet>::const_iterator i_dsJet;
+        nDSJets=0;
+        for(i_dsJet = h_dsJet->begin(); i_dsJet != h_dsJet->end(); i_dsJet++){
+          reco::CaloJet dsJet = *i_dsJet;
+          dsJetRawE[nDSJets]  = dsJet.energy();
+          dsJetRawPt[nDSJets] = dsJet.pt();
+          //apply pileup correction
+          float pileupCorr = 1-((1.08 - dsRho)*dsJet.jetArea()/dsJet.pt());
 
-      float dEoE = fabs(dsJet.energy() - recoJetE[iRECOJet])/recoJetE[iRECOJet];
+          if(dsJet.pt()*pileupCorr < jetThreshold) continue;
 
-      if(dEoE < 0.5 && dEoE < bestdEoE){
-        bestdEoE = dEoE;
-        bestIndex = iRECOJet;
-      }
-    }
-    dsJetMatchIndex[nDSJets] = bestIndex;
-    nDSJets++;
-  }
-  outputTree->Fill();
-}
+          if(apply_corrections_DS){
 
-// ------------ method called once each job just before starting event loop  ------------
-template <typename jettype, typename mettype>
-void 
-DataScoutingAnalyzer<jettype,mettype>::beginJob(){
+            if(pileupCorr > 0. && pileupCorr < 1.){
+              dspileupCorr[nDSJets] = pileupCorr;
+              dsJet.scaleEnergy(pileupCorr);
+              float ds_tmp_pT = dsJet.pt();
+              dsJet.scaleEnergy(correctorL2L3->correction(dsJet,iEvent,iSetup));
+              dsJECL2L3Res[nDSJets] = dsJet.pt()/ds_tmp_pT;
+            }
+          }
+          dsJetPt[nDSJets]      = dsJet.pt();
+          dsJetEta[nDSJets]     = dsJet.eta();
+          dsJetPhi[nDSJets]     = dsJet.phi();
+          dsJetE[nDSJets]       = dsJet.energy();
+          dsJetFracHad[nDSJets] = dsJet.energyFractionHadronic();
+          dsJetFracEm[nDSJets]  = dsJet.emEnergyFraction();
 
-  outputFile = new TFile(s_outputFile.c_str(),"RECREATE");
-  outputTree = new TTree("DSComp","");
+          //do jet matching
+          float bestdEoE  = 9999;
+          int bestIndex   = -1;
+          float minDeltaR = 9999.;
+          float dR;
+          for( int iRECOJet=0; iRECOJet < nRECOJets; iRECOJet++){
+            dR= reco::deltaR(dsJet.eta(),dsJet.phi(),recoJetEta[iRECOJet],recoJetPhi[iRECOJet]);
+            if( dR> 0.5) continue; //require DR match
+              if (dR < minDeltaR){
+                minDeltaR = dR;
+                bestIndex = iRECOJet;
+              }
 
-  outputTree->Branch("runNo",&runNo,"runNo/I");
-  outputTree->Branch("evtNo",&evtNo,"evtNo/I");
-  outputTree->Branch("lumiBlock",&lumiBlock,"lumiBlock/I");
+              float dEoE = fabs(dsJet.energy() - recoJetE[iRECOJet])/recoJetE[iRECOJet];
 
-  outputTree->Branch("nDSJets",&nDSJets,"nDSJets/I");
+              if(dEoE < 0.5 && dEoE < bestdEoE){
+                bestdEoE = dEoE;
+                bestIndex = iRECOJet;
+              }
+            }
+            dsJetMatchIndex[nDSJets] = bestIndex;
+            nDSJets++;
+          }
+          outputTree->Fill();
+        }
 
-  outputTree->Branch("dspileupCorr",dspileupCorr,"dspileupCorr[nDSJets]");
-  outputTree->Branch("recoJEC",recoJEC,"recoJEC[nDSJets]");
-  outputTree->Branch("dsJECL2L3Res",dsJECL2L3Res,"dsJECL2L3Res[nDSJets]");
-  outputTree->Branch("dsJetPt",dsJetPt,"dsJetPt[nDSJets]");
-  outputTree->Branch("dsJetEta",dsJetEta,"dsJetEta[nDSJets]");
-  outputTree->Branch("dsJetPhi",dsJetPhi,"dsJetPhi[nDSJets]");
-  outputTree->Branch("dsJetE",dsJetE,"dsJetE[nDSJets]");
-  outputTree->Branch("dsJetRawE",dsJetRawE,"dsJetRawE[nDSJets]");
-  outputTree->Branch("dsJetFracHad",dsJetFracHad,"dsJetFracHad[nDSJets]");
-  outputTree->Branch("dsJetFracEm",dsJetFracEm,"dsJetFracEm[nDSJets]");
-  outputTree->Branch("dsJetMatchIndex",dsJetMatchIndex,"dsJetMatchIndex[nDSJets]/I");
+        // ------------ method called once each job just before starting event loop  ------------
+        template <typename jettype, typename mettype>
+        void
+        DataScoutingAnalyzer<jettype,mettype>::beginJob(){
 
-  outputTree->Branch("dsRho",&dsRho);
-  outputTree->Branch("dsMetPt",&dsMetPt);
-  outputTree->Branch("dsMetPhi",&dsMetPhi);
-  outputTree->Branch("dsMetCleanPt",&dsMetCleanPt);
-  outputTree->Branch("dsMetCleanPhi",&dsMetCleanPhi);
+          outputFile = new TFile(s_outputFile.c_str(),"RECREATE");
+          outputTree = new TTree("DSComp","");
 
-  outputTree->Branch("nRECOJets",&nRECOJets,"nRECOJets/I");
-  outputTree->Branch("recoJetPt",recoJetPt,"recoJetPt[nRECOJets]");
-  outputTree->Branch("recoJetEta",recoJetEta,"recoJetEta[nRECOJets]");
-  outputTree->Branch("recoJetPhi",recoJetPhi,"recoJetPhi[nRECOJets]");
-  outputTree->Branch("recoJetE",recoJetE,"recoJetE[nRECOJets]");
-  outputTree->Branch("recoJetRawE",recoJetRawE,"recoJetRawE[nRECOJets]");
-  outputTree->Branch("recoJetE",recoJetE,"recoJetE[nRECOJets]");
-  outputTree->Branch("recoJetFracHad",recoJetFracHad,"recoJetFracHad[nRECOJets]");
-  outputTree->Branch("recoJetFracEm",recoJetFracEm,"recoJetFracEm[nRECOJets]");
+          outputTree->Branch("runNo",&runNo,"runNo/I");
+          outputTree->Branch("evtNo",&evtNo,"evtNo/I");
+          outputTree->Branch("lumiBlock",&lumiBlock,"lumiBlock/I");
 
-  outputTree->Branch("recoRho",&recoRho);
-  outputTree->Branch("recoMetPt",&recoMetPt);
-  outputTree->Branch("recoMetPhi",&recoMetPhi);
-  outputTree->Branch("recoMetCleanPt",&recoMetCleanPt);
-  outputTree->Branch("recoMetCleanPhi",&recoMetCleanPhi);
+          outputTree->Branch("nDSJets",&nDSJets,"nDSJets/I");
 
-  outputTree->Branch("HBHENoiseFilterResultFlag",&HBHENoiseFilterResultFlag,"HBHENoiseFilterResultFlag/B");
-  outputTree->Branch("eeBadScFilterFlag",&eeBadScFilterFlag,"eeBadScFilterFlag/B"); 
-  outputTree->Branch("hcalLaserEventFilterFlag",&hcalLaserEventFilterFlag,"hcalLaserEventFilterFlag/B"); 
-}
+          outputTree->Branch("dspileupCorr",dspileupCorr,"dspileupCorr[nDSJets]");
+          outputTree->Branch("recoJEC",recoJEC,"recoJEC[nDSJets]");
+          outputTree->Branch("dsJECL2L3Res",dsJECL2L3Res,"dsJECL2L3Res[nDSJets]");
+          outputTree->Branch("dsJetPt",dsJetPt,"dsJetPt[nDSJets]");
+          outputTree->Branch("dsJetRawPt",dsJetRawPt,"dsJetRawPt[nDSJets]");
+          outputTree->Branch("dsJetEta",dsJetEta,"dsJetEta[nDSJets]");
+          outputTree->Branch("dsJetPhi",dsJetPhi,"dsJetPhi[nDSJets]");
+          outputTree->Branch("dsJetE",dsJetE,"dsJetE[nDSJets]");
+          outputTree->Branch("dsJetRawE",dsJetRawE,"dsJetRawE[nDSJets]");
+          outputTree->Branch("dsJetFracHad",dsJetFracHad,"dsJetFracHad[nDSJets]");
+          outputTree->Branch("dsJetFracEm",dsJetFracEm,"dsJetFracEm[nDSJets]");
+          outputTree->Branch("dsJetMatchIndex",dsJetMatchIndex,"dsJetMatchIndex[nDSJets]/I");
 
-// ------------ method called once each job just after ending the event loop  ------------
-template <typename jettype, typename mettype>
-void 
-DataScoutingAnalyzer<jettype,mettype>::endJob() 
-{
-  outputFile->cd();
-  outputTree->Write();
-  outputFile->Close();
-}
+          outputTree->Branch("dsRho",&dsRho);
+          outputTree->Branch("dsMetPt",&dsMetPt);
+          outputTree->Branch("dsMetPhi",&dsMetPhi);
+          outputTree->Branch("dsMetCleanPt",&dsMetCleanPt);
+          outputTree->Branch("dsMetCleanPhi",&dsMetCleanPhi);
 
-// ------------ method called when starting to processes a run  ------------
-template <typename jettype, typename mettype>
-void 
-DataScoutingAnalyzer<jettype,mettype>::beginRun(edm::Run const&, edm::EventSetup const&){
-}
+          outputTree->Branch("nRECOJets",&nRECOJets,"nRECOJets/I");
+          outputTree->Branch("recoJetPt",recoJetPt,"recoJetPt[nRECOJets]");
+          outputTree->Branch("recoJetRawPt",recoJetRawPt,"recoJetRawPt[nRECOJets]");
+          outputTree->Branch("recoJetEta",recoJetEta,"recoJetEta[nRECOJets]");
+          outputTree->Branch("recoJetPhi",recoJetPhi,"recoJetPhi[nRECOJets]");
+          outputTree->Branch("recoJetE",recoJetE,"recoJetE[nRECOJets]");
+          outputTree->Branch("recoJetRawE",recoJetRawE,"recoJetRawE[nRECOJets]");
+          outputTree->Branch("recoJetE",recoJetE,"recoJetE[nRECOJets]");
+          outputTree->Branch("recoJetFracHad",recoJetFracHad,"recoJetFracHad[nRECOJets]");
+          outputTree->Branch("recoJetFracEm",recoJetFracEm,"recoJetFracEm[nRECOJets]");
 
-// ------------ method called when ending the processing of a run  ------------
-template <typename jettype, typename mettype>
-void 
-DataScoutingAnalyzer<jettype,mettype>::endRun(edm::Run const&, edm::EventSetup const&){
-}
+          outputTree->Branch("recoRho",&recoRho);
+          outputTree->Branch("recoMetPt",&recoMetPt);
+          outputTree->Branch("recoMetPhi",&recoMetPhi);
+          outputTree->Branch("recoMetCleanPt",&recoMetCleanPt);
+          outputTree->Branch("recoMetCleanPhi",&recoMetCleanPhi);
 
-// ------------ method called when starting to processes a luminosity block  ------------
-template <typename jettype, typename mettype>
-void 
-DataScoutingAnalyzer<jettype,mettype>::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&){
-}
+          outputTree->Branch("HBHENoiseFilterResultFlag",&HBHENoiseFilterResultFlag,"HBHENoiseFilterResultFlag/B");
+          outputTree->Branch("eeBadScFilterFlag",&eeBadScFilterFlag,"eeBadScFilterFlag/B");
+          outputTree->Branch("hcalLaserEventFilterFlag",&hcalLaserEventFilterFlag,"hcalLaserEventFilterFlag/B");
+        }
 
-// ------------ method called when ending the processing of a luminosity block  ------------
-template <typename jettype, typename mettype>
-void 
-DataScoutingAnalyzer<jettype,mettype>::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-{
-}
+        // ------------ method called once each job just after ending the event loop  ------------
+        template <typename jettype, typename mettype>
+        void
+        DataScoutingAnalyzer<jettype,mettype>::endJob()
+        {
+          outputFile->cd();
+          outputTree->Write();
+          outputFile->Close();
+        }
 
-// ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
-template <typename jettype, typename mettype>
-void
-DataScoutingAnalyzer<jettype,mettype>::fillDescriptions(edm::ConfigurationDescriptions& descriptions){
-  //The following says we do not know what parameters are allowed so do no validation
-  // Please change this to state exactly what you do use, even if it is no parameters
-  edm::ParameterSetDescription desc;
-  desc.setUnknown();
-  descriptions.addDefault(desc);
-}
+        // ------------ method called when starting to processes a run  ------------
+        template <typename jettype, typename mettype>
+        void
+        DataScoutingAnalyzer<jettype,mettype>::beginRun(edm::Run const&, edm::EventSetup const&){
+        }
+
+        // ------------ method called when ending the processing of a run  ------------
+        template <typename jettype, typename mettype>
+        void
+        DataScoutingAnalyzer<jettype,mettype>::endRun(edm::Run const&, edm::EventSetup const&){
+        }
+
+        // ------------ method called when starting to processes a luminosity block  ------------
+        template <typename jettype, typename mettype>
+        void
+        DataScoutingAnalyzer<jettype,mettype>::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&){
+        }
+
+        // ------------ method called when ending the processing of a luminosity block  ------------
+        template <typename jettype, typename mettype>
+        void
+        DataScoutingAnalyzer<jettype,mettype>::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+        {
+        }
+
+        // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
+        template <typename jettype, typename mettype>
+        void
+        DataScoutingAnalyzer<jettype,mettype>::fillDescriptions(edm::ConfigurationDescriptions& descriptions){
+          //The following says we do not know what parameters are allowed so do no validation
+          // Please change this to state exactly what you do use, even if it is no parameters
+          edm::ParameterSetDescription desc;
+          desc.setUnknown();
+          descriptions.addDefault(desc);
+        }
 
 
-typedef DataScoutingAnalyzer<reco::CaloJet,reco::CaloMET> CaloScoutingAnalyzer;
-typedef DataScoutingAnalyzer<reco::PFJet,reco::CaloMET> PFJetScoutingAnalyzer;
-typedef DataScoutingAnalyzer<reco::PFJet,reco::PFMET> PFScoutingAnalyzer;
-//define this as a plug-in
-DEFINE_FWK_MODULE(CaloScoutingAnalyzer);
-DEFINE_FWK_MODULE(PFJetScoutingAnalyzer);
-DEFINE_FWK_MODULE(PFScoutingAnalyzer);
+        typedef DataScoutingAnalyzer<reco::CaloJet,reco::CaloMET> CaloScoutingAnalyzer;
+        typedef DataScoutingAnalyzer<reco::PFJet,reco::CaloMET> PFJetScoutingAnalyzer;
+        typedef DataScoutingAnalyzer<reco::PFJet,reco::PFMET> PFScoutingAnalyzer;
+        //define this as a plug-in
+        DEFINE_FWK_MODULE(CaloScoutingAnalyzer);
+        DEFINE_FWK_MODULE(PFJetScoutingAnalyzer);
+        DEFINE_FWK_MODULE(PFScoutingAnalyzer);
