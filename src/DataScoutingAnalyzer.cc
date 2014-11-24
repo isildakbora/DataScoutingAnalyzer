@@ -158,7 +158,7 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
           dsJetRawE[nDSJets]  = dsJet.energy();
           dsJetRawPt[nDSJets] = dsJet.pt();
           //apply pileup correction
-          float pileupCorr = 1-((1.08 - dsRho)*dsJet.jetArea()/dsJet.pt());
+          float pileupCorr = 1-((dsRho - 1.08)*dsJet.jetArea()/dsJet.pt());
 
           if(dsJet.pt()*pileupCorr < jetThreshold) continue;
 
