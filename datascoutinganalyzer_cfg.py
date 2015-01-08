@@ -1,364 +1,71 @@
-// system include files
-#include <memory>
-#include <typeinfo>
-#include <vector>
-// user include files
-#include "PhysicsTools/SelectorUtils/interface/JetIDSelectionFunctor.h"
-#include "FWCore/Framework/interface/Frameworkfwd.h"
+import FWCore.ParameterSet.Config as cms
+process = cms.Process("Demo")
 
-#include "FWCore/Framework/interface/Event.h"
-#include "FWCore/Framework/interface/MakerMacros.h"
+process.load("CommonTools.RecoAlgos.HBHENoiseFilterResultProducer_cfi")
+process.load("CommonTools.RecoAlgos.HBHENoiseFilter_cfi")
+process.load("RecoMET.METFilters.hcalLaserEventFilter_cfi")
+process.hcalLaserEventFilter.taggingMode          = True
+process.hcalLaserEventFilter.vetoByRunEventNumber = False
+process.hcalLaserEventFilter.vetoByHBHEOccupancy  = True
 
-#include "isildak/DataScoutingAnalyzer/interface/DataScoutingAnalyzer.h"
-
-//objects
-#include "DataFormats/VertexReco/interface/Vertex.h"
-#include "DataFormats/VertexReco/interface/VertexFwd.h"
-#include "DataFormats/JetReco/interface/CaloJetCollection.h"
-#include "DataFormats/JetReco/interface/PFJetCollection.h"
-#include "DataFormats/JetReco/interface/Jet.h"
-#include "DataFormats/JetReco/interface/JetID.h"
-#include "DataFormats/JetReco/interface/CaloJet.h"
-#include "DataFormats/JetReco/interface/PFJet.h"
-#include "DataFormats/METReco/interface/MET.h"
-#include "DataFormats/METReco/interface/CaloMET.h"
-#include "DataFormats/METReco/interface/CaloMETCollection.h"
-#include "DataFormats/METReco/interface/PFMET.h"
-#include "DataFormats/METReco/interface/PFMETCollection.h"
-#include "DataFormats/MuonReco/interface/Muon.h"
-#include "DataFormats/EgammaCandidates/interface/Electron.h"
-#include "DataFormats/EgammaCandidates/interface/ElectronIsolationAssociation.h"
-#include "DataFormats/EgammaReco/interface/SuperCluster.h"
-#include "DataFormats/RecoCandidate/interface/RecoEcalCandidate.h"
-#include "DataFormats/RecoCandidate/interface/RecoEcalCandidateFwd.h"
-#include "DataFormats/RecoCandidate/interface/RecoEcalCandidateIsolation.h"
-
-#include "DataFormats/Common/interface/AssociationMap.h"
-
-#include "DataFormats/Math/interface/deltaR.h"
-#include "JetMETCorrections/Objects/interface/JetCorrector.h"
-#include "TLorentzVector.h"
-
-template <typename jettype, typename mettype>
-DataScoutingAnalyzer<jettype,mettype>::DataScoutingAnalyzer(const edm::ParameterSet& iConfig):
-    tag_recoJet(iConfig.getParameter<edm::InputTag>("jets")),
-    apply_corrections_reco(iConfig.getParameter<bool>("apply_corrections_reco")),
-    apply_corrections_DS(iConfig.getParameter<bool>("apply_corrections_DS")),
-    s_recoJetCorrector(iConfig.getParameter<std::string>("jetCorrectionsReco")),
-    s_dsJetCorrector(iConfig.getParameter<std::string>("jetCorrectionsDS")),
-    tag_recoRho(iConfig.getParameter<edm::InputTag>("rho")),
-    jetThreshold(iConfig.getParameter<double>("jetThreshold")),
-    tag_recoMet(iConfig.getParameter<edm::InputTag>("met")),
-    tag_recoElectrons(iConfig.getParameter<edm::InputTag>("electrons")),
-    tag_recoMuons(iConfig.getParameter<edm::InputTag>("muons")),
-    tag_hcalNoise(iConfig.getParameter<edm::InputTag>("noise")),
-    s_outputFile(iConfig.getParameter<std::string>("outputFile"))
-{
-}
-
-template <typename jettype, typename mettype>
-DataScoutingAnalyzer<jettype,mettype>::~DataScoutingAnalyzer()
-{
-}
-
-// ------------ method called for each event  ------------
-template <typename jettype, typename mettype>
-void
-DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
-{
-
-    using namespace edm;
-
-    runNo      = iEvent.id().run();
-    evtNo      = iEvent.id().event();
-    lumiBlock  = iEvent.id().luminosityBlock();
-
-    Handle<std::vector<jettype> > h_recoJet;
-    const JetCorrector* correctorL1L2L3 = JetCorrector::getJetCorrector (s_recoJetCorrector, iSetup);
-    const JetCorrector* correctorL2L3   = JetCorrector::getJetCorrector (s_dsJetCorrector, iSetup);
-
-    Handle<double> h_recoRho;
-    edm::Handle<reco::JetIDValueMap> recoJetIDMap;
-
-    Handle<std::vector<mettype> > h_recoMet;
-    iEvent.getByLabel(tag_recoJet,h_recoJet);
-    iEvent.getByLabel(tag_recoMet,h_recoMet);
-    iEvent.getByLabel(tag_recoRho,h_recoRho);
-
-    Handle<std::vector<reco::CaloJet> > h_dsJet;
-    Handle<std::vector<reco::CaloMET> > h_dsMet;
-    Handle<std::vector<reco::CaloMET> > h_dsMetClean;
-    Handle<double> h_dsRho;
-
-    iEvent.getByLabel("hltCaloJetIDPassed",h_dsJet);
-    iEvent.getByLabel("hltMet",h_dsMet);
-    iEvent.getByLabel("hltMetClean",h_dsMetClean);
-    iEvent.getByLabel("hltKT6CaloJets","rho",h_dsRho);
-
-    edm::Handle< bool > HBHENoiseFilterResult;
-    try
-    {
-        iEvent.getByLabel(edm::InputTag("HBHENoiseFilterResultProducer","HBHENoiseFilterResult"), HBHENoiseFilterResult);
-    }
-    catch ( cms::Exception& ex )
-    {
-        edm::LogWarning("CmsMetFiller") << "Can't get bool: " << HBHENoiseFilterResult;
-    }
-    HBHENoiseFilterResultFlag = *HBHENoiseFilterResult;
-
-    edm::Handle< bool > hcalLaserEventFilter;
-    try
-    {
-        iEvent.getByLabel("hcalLaserEventFilter", hcalLaserEventFilter);
-    }
-    catch ( cms::Exception& ex )
-    {
-        edm::LogWarning("CmsMetFiller") << "Can't get bool: " << hcalLaserEventFilter;
-    }
-    hcalLaserEventFilterFlag = *hcalLaserEventFilter;
-
-    edm::Handle<reco::VertexCollection> recVtxs;
-    iEvent.getByLabel("hltPixelVertices",recVtxs);
-    nPVz = 0;
-    if(recVtxs.isValid())
-    {
-        for(reco::VertexCollection::const_iterator i_vtx = recVtxs->begin(); i_vtx != recVtxs->end(); ++i_vtx)
-        {
-            //if(!i_vtx->isFake() && (fabs(i_vtx->z()) < 24))
-            //{
-                PVz[nPVz] = i_vtx->z();
-                //std::cout << "PVz=" << i_vtx->z() << "  ndof=" << i_vtx->ndof() << "  fake=" << i_vtx->isFake() << std::endl;
-                nPVz++;
-            //}
-        }
-    }
-    //std::cout << "nPVz=" << nPVz << std::endl;
-    //fill the tree
-
-    //MET
-    dsMetPt = h_dsMet->front().pt();
-    dsMetPhi = h_dsMet->front().phi();
-    dsMetCleanPt = h_dsMetClean->front().pt();
-    dsMetCleanPhi = h_dsMetClean->front().phi();
-    recoMetPt = h_recoMet->front().pt();
-    recoMetPhi = h_recoMet->front().phi();
-
-    dsRho = *h_dsRho;
-    recoRho = *h_recoRho;
-
-    typename std::vector<jettype>::const_iterator i_recoJet;
-    //std::vector<reco::Jet>::const_iterator i_recoJet;
-    nRECOJets=0;
-    for(i_recoJet = h_recoJet->begin(); i_recoJet != h_recoJet->end(); i_recoJet++)
-    {
-        jettype recoJet = *i_recoJet;
-
-        reco::CaloJet* p1 = dynamic_cast<reco::CaloJet*>(&recoJet);
-        //reco::PFJet*   p2 = dynamic_cast<reco::PFJet*>(&recoJet);
-
-        recoJetRawE[nRECOJets]  = recoJet.energy();
-        recoJetRawPt[nRECOJets] = recoJet.pt();
-
-        float tmp_pT = recoJet.pt();
-        double scale = correctorL1L2L3->correction(recoJet,iEvent,iSetup);
-        if(apply_corrections_reco)
-        {
-            recoJet.scaleEnergy(scale);
-            recoJEC[nRECOJets] = recoJet.pt()/tmp_pT;
-        }
-
-        if(recoJet.pt() < jetThreshold) continue;
-
-        recoJetPt[nRECOJets]    = recoJet.pt();
-        recoJetEta[nRECOJets]   = recoJet.eta();
-        recoJetPhi[nRECOJets]   = recoJet.phi();
-        recoJetE[nRECOJets]     = recoJet.energy();
-
-        if(p1)
-        {
-            recoJetFracHad[nRECOJets] = p1->energyFractionHadronic();
-            recoJetFracEm[nRECOJets]  = p1->emEnergyFraction();
-        }
-        nRECOJets++;
-    }
-
-    std::vector<reco::CaloJet>::const_iterator i_dsJet;
-    nDSJets=0;
-    for(i_dsJet = h_dsJet->begin(); i_dsJet != h_dsJet->end(); i_dsJet++)
-    {
-        reco::CaloJet dsJet = *i_dsJet;
-        dsJetRawE[nDSJets]  = dsJet.energy();
-        dsJetRawPt[nDSJets] = dsJet.pt();
-
-        //apply pileup correction
-        float pileupCorr      = 1-((dsRho - 1.08)*dsJet.jetArea()/dsJet.pt());
-
-        if(dsJet.pt()*pileupCorr < jetThreshold) continue;
-        //std::cout << "pileup correction:" << pileupCorr << std::endl;
-        if(apply_corrections_DS)
-        {
-
-            if(pileupCorr > 0. && pileupCorr < 1.)
-            {
-                dspileupCorr[nDSJets] = pileupCorr;
-                dsJet.scaleEnergy(pileupCorr);
-            }
-
-            float ds_tmp_pT = dsJet.pt();
-            dsJet.scaleEnergy(correctorL2L3->correction(dsJet,iEvent,iSetup));
-            dsJECL2L3Res[nDSJets] = dsJet.pt()/ds_tmp_pT;
-            //std::cout << "corrected pT:"<<dsJet.pt()<< " raw pT"<< ds_tmp_pT<<" dsJECL2L3Res" << dsJECL2L3Res[nDSJets] << std::endl;
-        }
-        dsJetPt[nDSJets]      = dsJet.pt();
-        dsJetEta[nDSJets]     = dsJet.eta();
-        dsJetPhi[nDSJets]     = dsJet.phi();
-        dsJetE[nDSJets]       = dsJet.energy();
-        dsJetFracHad[nDSJets] = dsJet.energyFractionHadronic();
-        dsJetFracEm[nDSJets]  = dsJet.emEnergyFraction();
-
-        //do jet matching
-        float bestdEoE  = 9999;
-        int bestIndex   = -1;
-        float minDeltaR = 9999.;
-        float dR;
-        for( int iRECOJet=0; iRECOJet < nRECOJets; iRECOJet++)
-        {
-            dR= reco::deltaR(dsJet.eta(),dsJet.phi(),recoJetEta[iRECOJet],recoJetPhi[iRECOJet]);
-            if( dR> 0.5) continue; //require DR match
-            if (dR < minDeltaR)
-            {
-                minDeltaR = dR;
-                bestIndex = iRECOJet;
-            }
-
-            float dEoE = fabs(dsJet.energy() - recoJetE[iRECOJet])/recoJetE[iRECOJet];
-
-            if(dEoE < 0.5 && dEoE < bestdEoE)
-            {
-                bestdEoE = dEoE;
-                bestIndex = iRECOJet;
-            }
-        }
-        dsJetMatchIndex[nDSJets] = bestIndex;
-        nDSJets++;
-    }
-    outputTree->Fill();
-}
-
-// ------------ method called once each job just before starting event loop  ------------
-template <typename jettype, typename mettype>
-void
-DataScoutingAnalyzer<jettype,mettype>::beginJob()
-{
-
-    outputFile = new TFile(s_outputFile.c_str(),"RECREATE");
-    outputTree = new TTree("DSComp","");
-
-    outputTree->Branch("runNo",&runNo,"runNo/I");
-    outputTree->Branch("evtNo",&evtNo,"evtNo/I");
-    outputTree->Branch("lumiBlock",&lumiBlock,"lumiBlock/I");
-
-    outputTree->Branch("nDSJets",&nDSJets,"nDSJets/I");
-    outputTree->Branch("nPVz",&nPVz,"nPVz/I");
-
-    outputTree->Branch("PVz",&PVz,"PVz[nPVz]");
-
-    outputTree->Branch("dspileupCorr",dspileupCorr,"dspileupCorr[nDSJets]");
-    outputTree->Branch("recoJEC",recoJEC,"recoJEC[nDSJets]");
-    outputTree->Branch("dsJECL2L3Res",dsJECL2L3Res,"dsJECL2L3Res[nDSJets]");
-    outputTree->Branch("dsJetPt",dsJetPt,"dsJetPt[nDSJets]");
-    outputTree->Branch("dsJetRawPt",dsJetRawPt,"dsJetRawPt[nDSJets]");
-    outputTree->Branch("dsJetEta",dsJetEta,"dsJetEta[nDSJets]");
-    outputTree->Branch("dsJetPhi",dsJetPhi,"dsJetPhi[nDSJets]");
-    outputTree->Branch("dsJetE",dsJetE,"dsJetE[nDSJets]");
-    outputTree->Branch("dsJetRawE",dsJetRawE,"dsJetRawE[nDSJets]");
-    outputTree->Branch("dsJetFracHad",dsJetFracHad,"dsJetFracHad[nDSJets]");
-    outputTree->Branch("dsJetFracEm",dsJetFracEm,"dsJetFracEm[nDSJets]");
-    outputTree->Branch("dsJetMatchIndex",dsJetMatchIndex,"dsJetMatchIndex[nDSJets]/I");
-
-    outputTree->Branch("dsRho",&dsRho);
-    outputTree->Branch("dsMetPt",&dsMetPt);
-    outputTree->Branch("dsMetPhi",&dsMetPhi);
-    outputTree->Branch("dsMetCleanPt",&dsMetCleanPt);
-    outputTree->Branch("dsMetCleanPhi",&dsMetCleanPhi);
-
-    outputTree->Branch("nRECOJets",&nRECOJets,"nRECOJets/I");
-    outputTree->Branch("recoJetPt",recoJetPt,"recoJetPt[nRECOJets]");
-    outputTree->Branch("recoJetRawPt",recoJetRawPt,"recoJetRawPt[nRECOJets]");
-    outputTree->Branch("recoJetEta",recoJetEta,"recoJetEta[nRECOJets]");
-    outputTree->Branch("recoJetPhi",recoJetPhi,"recoJetPhi[nRECOJets]");
-    outputTree->Branch("recoJetE",recoJetE,"recoJetE[nRECOJets]");
-    outputTree->Branch("recoJetRawE",recoJetRawE,"recoJetRawE[nRECOJets]");
-    outputTree->Branch("recoJetE",recoJetE,"recoJetE[nRECOJets]");
-    outputTree->Branch("recoJetFracHad",recoJetFracHad,"recoJetFracHad[nRECOJets]");
-    outputTree->Branch("recoJetFracEm",recoJetFracEm,"recoJetFracEm[nRECOJets]");
-
-    outputTree->Branch("recoRho",&recoRho);
-    outputTree->Branch("recoMetPt",&recoMetPt);
-    outputTree->Branch("recoMetPhi",&recoMetPhi);
-    outputTree->Branch("recoMetCleanPt",&recoMetCleanPt);
-    outputTree->Branch("recoMetCleanPhi",&recoMetCleanPhi);
-
-    outputTree->Branch("HBHENoiseFilterResultFlag",&HBHENoiseFilterResultFlag,"HBHENoiseFilterResultFlag/B");
-    outputTree->Branch("eeBadScFilterFlag",&eeBadScFilterFlag,"eeBadScFilterFlag/B");
-    outputTree->Branch("hcalLaserEventFilterFlag",&hcalLaserEventFilterFlag,"hcalLaserEventFilterFlag/B");
-}
-
-// ------------ method called once each job just after ending the event loop  ------------
-template <typename jettype, typename mettype>
-void
-DataScoutingAnalyzer<jettype,mettype>::endJob()
-{
-    outputFile->cd();
-    outputTree->Write();
-    outputFile->Close();
-}
-
-// ------------ method called when starting to processes a run  ------------
-template <typename jettype, typename mettype>
-void
-DataScoutingAnalyzer<jettype,mettype>::beginRun(edm::Run const&, edm::EventSetup const&)
-{
-}
-
-// ------------ method called when ending the processing of a run  ------------
-template <typename jettype, typename mettype>
-void
-DataScoutingAnalyzer<jettype,mettype>::endRun(edm::Run const&, edm::EventSetup const&)
-{
-}
-
-// ------------ method called when starting to processes a luminosity block  ------------
-template <typename jettype, typename mettype>
-void
-DataScoutingAnalyzer<jettype,mettype>::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-{
-}
-
-// ------------ method called when ending the processing of a luminosity block  ------------
-template <typename jettype, typename mettype>
-void
-DataScoutingAnalyzer<jettype,mettype>::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
-{
-}
-
-// ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
-template <typename jettype, typename mettype>
-void
-DataScoutingAnalyzer<jettype,mettype>::fillDescriptions(edm::ConfigurationDescriptions& descriptions)
-{
-    //The following says we do not know what parameters are allowed so do no validation
-    // Please change this to state exactly what you do use, even if it is no parameters
-    edm::ParameterSetDescription desc;
-    desc.setUnknown();
-    descriptions.addDefault(desc);
-}
+process.load("RecoMET.METFilters.eeBadScFilter_cfi")
+process.eeBadScFilter.taggingMode = True
 
 
-typedef DataScoutingAnalyzer<reco::CaloJet,reco::CaloMET> CaloScoutingAnalyzer;
-typedef DataScoutingAnalyzer<reco::PFJet,reco::CaloMET> PFJetScoutingAnalyzer;
-typedef DataScoutingAnalyzer<reco::PFJet,reco::PFMET> PFScoutingAnalyzer;
-//define this as a plug-in
-DEFINE_FWK_MODULE(CaloScoutingAnalyzer);
-DEFINE_FWK_MODULE(PFJetScoutingAnalyzer);
-DEFINE_FWK_MODULE(PFScoutingAnalyzer);
+
+process.load("FWCore.MessageService.MessageLogger_cfi")
+
+process.load("Configuration.StandardSequences.MagneticField_AutoFromDBCurrent_cff")
+process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
+process.load("Configuration.StandardSequences.Reconstruction_Data_cff")
+
+process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
+process.GlobalTag.globaltag = 'FT53_V21A_AN6::All'
+
+process.load('JetMETCorrections.Configuration.DefaultJEC_cff')
+
+process.MessageLogger.cerr.FwkReport.reportEvery = 1000
+process.options = cms.untracked.PSet(SkipEvent   = cms.untracked.vstring('ProductNotFound'))
+
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+
+process.source = cms.Source("PoolSource",
+    # replace 'myfile.root' with the source file you want to use
+    fileNames = cms.untracked.vstring('file:data_sample.root')
+)
+
+process.goodPrimaryVertices = cms.EDFilter("VertexSelector",
+                                            src     = cms.InputTag("offlinePrimaryVertices"),
+                                            cut     = cms.string("!isFake && ndof > 4 && abs(z) <= 24 && position.Rho <= 2"),
+                                            #cut     = cms.string("abs(z) <= 24"),
+                                            filter  = cms.bool(True),
+)
+
+plugin_type       = [["CaloScoutingAnalyzer","ak5CaloJets","ak5CaloL1FastL2L3Residual","kt6CaloJets"],["PFJetScoutingAnalyzer","ak5PFJets","ak5PFL1FastL2L3Residual","kt6PFJets"]]
+i = 0 # 0 is CaloScoutingAnalyzer 1 is PFJetScoutingAnalyzer
+
+print process.GlobalTag.globaltag
+print plugin_type[i][0]+" is running."+"\njets:"+plugin_type[i][1]+"\njetCorrections:"+plugin_type[i][2]+"\nrho:"+plugin_type[i][3]
+if i==0:
+    output = 'test_Calo.root'
+else:
+    output = 'test_PF.root'
+process.demo = cms.EDAnalyzer(plugin_type[i][0],
+                              jets                       = cms.InputTag(plugin_type[i][1]),
+                              HBHENoiseFilterResultLabel = cms.InputTag("HBHENoiseFilterResultProducer", "HBHENoiseFilterResult"),
+                              apply_corrections_reco     = cms.bool(True),
+                              apply_corrections_DS       = cms.bool(True),
+                              jetCorrectionsReco         = cms.string(plugin_type[i][2]),
+                              jetCorrectionsDS           = cms.string("ak5CaloL2L3Residual"),
+                              rho                        = cms.InputTag(plugin_type[i][3],"rho"),
+                              jetThreshold               = cms.double(30),
+                              met                        = cms.InputTag("met"),
+                              electrons                  = cms.InputTag(""),
+                              muons                      = cms.InputTag(""),
+                              noise                      = cms.InputTag(""),
+                              outputFile                 = cms.string(output)
+)
+
+process.metOptionalFilterSequence = cms.Sequence(process.HBHENoiseFilterResultProducer * process.hcalLaserEventFilter)
+#process.goodPrimaryVertices *
+process.p       = cms.Path(process.metOptionalFilterSequence * process.demo)
