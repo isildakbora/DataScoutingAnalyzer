@@ -124,15 +124,15 @@ DataScoutingAnalyzer<jettype,mettype>::analyze(const edm::Event& iEvent, const e
     {
         for(reco::VertexCollection::const_iterator i_vtx = recVtxs->begin(); i_vtx != recVtxs->end(); ++i_vtx)
         {
-            if(!i_vtx->isFake() && (fabs(i_vtx->z()) < 24) && (i_vtx->ndof() >= 4))
-            {
+            //if(!i_vtx->isFake() && (fabs(i_vtx->z()) < 24))
+            //{
                 PVz[nPVz] = i_vtx->z();
-                //std::cout << "PVz=" << i_vtx->z() << std::endl;
+                //std::cout << "PVz=" << i_vtx->z() << "  ndof=" << i_vtx->ndof() << "  fake=" << i_vtx->isFake() << std::endl;
                 nPVz++;
-            }
+            //}
         }
     }
-
+    //std::cout << "nPVz=" << nPVz << std::endl;
     //fill the tree
 
     //MET
